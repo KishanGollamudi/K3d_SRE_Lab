@@ -1,0 +1,9 @@
+# Ignore Helm chart tarballs
+*.tgz
+
+# Ignore backup files
+*.bak
+
+# Ignore Python cache
+__pycache__/
+*.pyc

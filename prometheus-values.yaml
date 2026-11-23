@@ -1,0 +1,39 @@
+# Disable Alertmanager so we only run core Prometheus and Node Exporter pods
+alertmanager:
+  enabled: false
+
+# Disable Pushgateway (only needed for short-lived batch jobs, not node metrics)
+prometheus-pushgateway:
+  enabled: false
+
+# Disable kube-state-metrics to keep pod count minimal for the lab
+kube-state-metrics:
+  enabled: false
+
+# Enable Node Exporter DaemonSet to collect host CPU, RAM, and disk metrics from Fedora
+prometheus-node-exporter:
+  enabled: true
+  # Mount host root filesystem read-only so node-exporter sees actual host disk usage
+  hostRootFsMount:
+    enabled: true
+
+server:
+  # Run a single Prometheus server replica suitable for a local K3d cluster
+  replicaCount: 1
+  # Disable PersistentVolumeClaim so metrics use fast ephemeral container storage
+  persistentVolume:
+    enabled: false
+  # Keep 2 hours of metrics in memory/tmpfs matching the k3d_Playground.sh timer
+  retention: "2h"
+  # Scrape metrics every 15 seconds so live CPU/RAM spikes show up quickly during demo
+  global:
+    scrape_interval: 15s
+    evaluation_interval: 15s
+  # Cap CPU and RAM requests/limits so the lab stays lightweight on the laptop
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi

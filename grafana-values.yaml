@@ -1,0 +1,58 @@
+# Run a single Grafana pod
+replicas: 1
+
+# Set explicit credentials so you do not have to decode a random Secret during the demo
+adminUser: admin
+adminPassword: admin123
+
+# Disable persistent disk storage; dashboards/settings live in memory for the 2h lab
+persistence:
+  enabled: false
+
+# Automatically configure Prometheus and Loki datasources when Grafana boots
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      # Connect to the standalone Prometheus server service inside the monitoring namespace
+      - name: Prometheus
+        type: prometheus
+        url: http://prometheus-server.monitoring.svc.cluster.local
+        access: proxy
+        isDefault: true
+      # Connect DIRECTLY to the Loki pod (port 3100), bypassing the broken gateway
+      - name: Loki
+        type: loki
+        url: http://loki.monitoring.svc.cluster.local:3100
+        access: proxy
+        isDefault: false
+
+# Grafana 13.x takes a few minutes to boot; extend the grace period so it isn't killed
+livenessProbe:
+  httpGet:
+    path: /api/health
+    port: 3000
+  initialDelaySeconds: 180
+  timeoutSeconds: 10
+  failureThreshold: 6
+  periodSeconds: 15
+  successThreshold: 1
+
+readinessProbe:
+  httpGet:
+    path: /api/health
+    port: 3000
+  initialDelaySeconds: 60
+  timeoutSeconds: 10
+  failureThreshold: 6
+  periodSeconds: 15
+  successThreshold: 1
+
+# Keep pod resource footprint appropriate for the plugin loading phase
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
