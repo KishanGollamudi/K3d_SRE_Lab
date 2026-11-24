@@ -9,7 +9,7 @@ adminPassword: admin123
 persistence:
   enabled: false
 
-# Automatically configure Prometheus and Loki datasources when Grafana boots
+# Automatically configure Prometheus, Loki, and Tempo datasources when Grafana boots
 datasources:
   datasources.yaml:
     apiVersion: 1
@@ -26,6 +26,13 @@ datasources:
         url: http://loki.monitoring.svc.cluster.local:3100
         access: proxy
         isDefault: false
+      # Connect to the Tempo service inside the monitoring namespace for OTLP API traces
+      - name: Tempo
+        type: tempo
+        url: http://tempo.monitoring.svc.cluster.local:3200
+        access: proxy
+        isDefault: false
+        editable: true
 
 # Grafana 13.x takes a few minutes to boot; extend the grace period so it isn't killed
 livenessProbe:
