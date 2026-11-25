@@ -23,7 +23,7 @@ datasources:
       # Connect DIRECTLY to the Loki pod (port 3100), bypassing the broken gateway
       - name: Loki
         type: loki
-        url: http://loki.monitoring.svc.cluster.local:3100
+        url: http://loki-gateway.monitoring.svc.cluster.local
         access: proxy
         isDefault: false
       # Connect to the Tempo service inside the monitoring namespace for OTLP API traces
