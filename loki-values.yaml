@@ -1,9 +1,11 @@
-deploymentMode: Monolithic
+# Run Loki in SingleBinary mode on a single-node k3d lab
+deploymentMode: SingleBinary
 
 loki:
   auth_enabled: false
   commonConfig:
     replication_factor: 1
+  # Use local container storage instead of object storage for the lab
   storage:
     type: filesystem
   schemaConfig:
@@ -15,13 +17,32 @@ loki:
         index:
           prefix: loki_index_
           period: 24h
+  # Keep log retention short so ephemeral storage does not fill up the 32GB Codespace disk
+  limits_config:
+    retention_period: 2h
 
 singleBinary:
   replicas: 1
+  # Disable PVC so logs stay on fast ephemeral storage for the lab session
   persistence:
     enabled: false
+  # Provide a writable emptyDir mount for /var/loki when rootfs is read-only
+  extraVolumes:
+    - name: loki-data
+      emptyDir: {}
+  extraVolumeMounts:
+    - name: loki-data
+      mountPath: /var/loki
+  # Cap CPU and RAM requests/limits for single-node lab headroom
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
 
-# Explicitly disable SimpleScalable target replicas so Monolithic validation passes
+# Disable SimpleScalable targets so only singleBinary runs
 backend:
   replicas: 0
 read:
@@ -29,10 +50,19 @@ read:
 write:
   replicas: 0
 
+# Disable extra cache pods to save RAM and disk on the lab node
 chunksCache:
   enabled: false
 resultsCache:
   enabled: false
 
+# Disable gateway (nginx) to avoid upstream host-resolution 502 errors
 gateway:
-  enabled: true
+  enabled: false
+
+# Disable canary and chart validation requiring canary
+lokiCanary:
+  enabled: false
+
+test:
+  enabled: false

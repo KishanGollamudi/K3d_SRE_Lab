@@ -1,54 +1,50 @@
 alloy:
-  extraEnv:
-    - name: NODE_NAME
-      valueFrom:
-        fieldRef:
-          fieldPath: spec.nodeName
-
+  # Keep Alloy lightweight with capped CPU and RAM for the single-node lab
   resources:
     requests:
       cpu: 50m
-      memory: 64Mi
-    limits:
-      cpu: 200m
       memory: 128Mi
-
+    limits:
+      cpu: 250m
+      memory: 256Mi
   configMap:
     content: |
+      // Discover pods on the cluster and attach useful metadata labels
       discovery.kubernetes "pods" {
         role = "pod"
       }
 
-      discovery.relabel "pods" {
+      discovery.relabel "pod_logs" {
         targets = discovery.kubernetes.pods.targets
-        
-        // 1. Keep only pods on this node (prevents duplicate logs)
-        rule {
-          source_labels = ["__meta_kubernetes_pod_node_name"]
-          regex         = env("NODE_NAME")
-          action        = "keep"
-        }
-        
-        // 2. Extract the namespace so you can query {namespace="monitoring"}
+
         rule {
           source_labels = ["__meta_kubernetes_namespace"]
           target_label  = "namespace"
         }
-
-        // 3. Extract the container name
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
         rule {
           source_labels = ["__meta_kubernetes_pod_container_name"]
           target_label  = "container"
         }
       }
 
+      // Collect container logs from Kubernetes pods
       loki.source.kubernetes "pods" {
-        targets    = discovery.relabel.pods.output
-        forward_to = [loki.write.local.receiver]
+        targets    = discovery.relabel.pod_logs.output
+        forward_to = [loki.write.default.receiver]
       }
 
-      loki.write "local" {
+      // Send logs directly to the single-binary Loki service on port 3100
+      loki.write "default" {
         endpoint {
           url = "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
         }
       }
+
+controller:
+  # Run as a single Deployment replica for a clean single-node lab
+  type: deployment
+  replicas: 1
